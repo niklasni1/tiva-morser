@@ -1,6 +1,7 @@
 //*****************************************************************************
 //
-// blinky.c - Simple example to blink the on-board LED.
+// main.c; adapted from 
+//   blinky.c, part of the TivaWare package from TI.
 //
 // Copyright (c) 2013-2014 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
@@ -26,21 +27,6 @@
 #include "inc/tm4c1294ncpdt.h"
 #include "morse.h"
 
-//*****************************************************************************
-//
-//! \addtogroup example_list
-//! <h1>Blinky (blinky)</h1>
-//!
-//! A very simple example that blinks the on-board LED using direct register
-//! access.
-//
-//*****************************************************************************
-
-//*****************************************************************************
-//
-// Blink the on-board LED.
-//
-//*****************************************************************************
 int
 main(void)
 {
@@ -60,6 +46,7 @@ main(void)
     // Enable the GPIO pin for the LED (PN0).  Set the direction as output, and
     // enable the GPIO pin for digital function.
     //
+    // blinking two LEDs is twice as good as blinking one, hence 0x03 -- nn
     GPIO_PORTN_DIR_R = 0x03;
     GPIO_PORTN_DEN_R = 0x03;
 

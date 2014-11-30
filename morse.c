@@ -1,5 +1,7 @@
 #include "morse.h"
 
+// state machinery to morse strings
+
 char *ALPHABET[26] = {
  ".-", // A
  "-...", // B
@@ -29,6 +31,7 @@ char *ALPHABET[26] = {
  "--.." // Z
 };
 
+// godawful..
 uint8_t lengths[26] = { 
   2,
   4,
@@ -122,14 +125,14 @@ enum OUTPUT tick(struct morser *morser) {
             }
           case TICKING:  // character done, insert blanks
             morser->state = SPACING;
-            morser->tick_count = 2; // 3 dots to a space, minus next line
+            morser->tick_count = 2; // 3 dots to a space, minus the one on the next line
             return LOW;
           case ENDING:
             return END;
         };
       } else {
         next_symbol(morser);
-        return LOW; // insert blank dot between symbols
+        return LOW; // insert single blank dot between symbols
       };
     default:
       switch(morser->state) {

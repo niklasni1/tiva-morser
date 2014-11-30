@@ -9,6 +9,7 @@ enum STATE {
   ENDING
 };
 
+// initialise one of these with the init-function below.
 struct morser {
   int8_t tick_count;
   enum STATE state;
@@ -26,6 +27,8 @@ enum OUTPUT {
   END
 };
 
+// call this at a suitable interval
+// no need to worry about anything else
 enum OUTPUT tick(struct morser *m); 
 
 #endif
