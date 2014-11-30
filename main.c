@@ -23,14 +23,57 @@
 //
 //*****************************************************************************
 
+#include <stdbool.h>
 #include <stdint.h>
-#include "inc/tm4c1294ncpdt.h"
+
 #include "morse.h"
+
+#include "inc/hw_memmap.h"
+#include "inc/tm4c1294ncpdt.h"
+/*#include "inc/hw_gpio.h"
+#include "inc/hw_ints.h"
+#include "inc/hw_types.h"
+#include "inc/hw_sysctl.h"
+*/
+
+#include "driverlib/gpio.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/rom.h"
+#include "driverlib/rom_map.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/timer.h"
+
+uint32_t g_ui32SysClock;
+
+struct morser m;
+enum OUTPUT res; 
+
+void
+Timer0IntHandler(void) { 
+  ROM_TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+
+  res = tick(&m);
+  switch(res) {
+    case HIGH:
+      GPIO_PORTN_DATA_R |= 0x03;
+      break;
+    case LOW:
+      GPIO_PORTN_DATA_R &= ~(0x03);
+      break;
+    case END:
+      GPIO_PORTN_DATA_R &= ~(0x03);
+      init_morser(&m, "emma");
+      break;
+  };
+}
 
 int
 main(void)
 {
     volatile uint32_t ui32Loop;
+    char *str = "emma";
+    init_morser(&m, str); 
 
     //
     // Enable the GPIO port that is used for the on-board LED.
@@ -41,39 +84,32 @@ main(void)
     // Do a dummy read to insert a few cycles after enabling the peripheral.
     //
     ui32Loop = SYSCTL_RCGCGPIO_R;
-
-    //
-    // Enable the GPIO pin for the LED (PN0).  Set the direction as output, and
-    // enable the GPIO pin for digital function.
-    //
+    
     // blinking two LEDs is twice as good as blinking one, hence 0x03 -- nn
     GPIO_PORTN_DIR_R = 0x03;
     GPIO_PORTN_DEN_R = 0x03;
-
-    struct morser m;
-    char *str = "emma";
-    init_morser(&m, str);
-
-    enum OUTPUT res;
     
+    //
+    // Set the clocking to run directly from the crystal at 120MHz.
+    //
+    g_ui32SysClock = MAP_SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ |
+                                             SYSCTL_OSC_MAIN |
+                                             SYSCTL_USE_PLL |
+                                             SYSCTL_CFG_VCO_480), 120000000);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+
+    //
+    // Enable processor interrupts.
+    //
+    ROM_IntMasterEnable();
+
+    ROM_TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC);
+    ROM_TimerLoadSet(TIMER0_BASE, TIMER_A, 12000000);
+    ROM_IntEnable(INT_TIMER0A);
+    ROM_TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+    ROM_TimerEnable(TIMER0_BASE, TIMER_A);
+
     while(1)
     {
-      res = tick(&m);
-      switch(res) {
-        case HIGH:
-          GPIO_PORTN_DATA_R |= 0x03;
-          break;
-        case LOW:
-          GPIO_PORTN_DATA_R &= ~(0x03);
-          break;
-        case END:
-          GPIO_PORTN_DATA_R &= ~(0x03);
-          init_morser(&m, str);
-          break;
-      };
-      
-      for(ui32Loop = 0; ui32Loop < 150000; ui32Loop++)
-      {
-      }
     }
 }

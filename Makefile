@@ -63,12 +63,14 @@ ${COMPILER}:
 #
 # Rules for building the blinky example.
 #
+${COMPILER}/morse.axf: ${COMPILER}/startup_${COMPILER}.o
 ${COMPILER}/morse.axf: ${COMPILER}/main.o
 ${COMPILER}/morse.axf: ${COMPILER}/morse.o
-${COMPILER}/morse.axf: ${COMPILER}/startup_${COMPILER}.o
+${COMPILER}/morse.axf: ${ROOT}/driverlib/${COMPILER}/libdriver.a
 ${COMPILER}/morse.axf: morse.ld
 SCATTERgcc_morse=morse.ld
 ENTRY_morse=ResetISR
+CFLAGSgcc=-DTARGET_IS_TM4C129_RA0 -ggdb
 
 #
 # Include the automatically generated dependency files.
