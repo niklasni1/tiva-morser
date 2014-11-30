@@ -1,1 +1,1 @@
-Morse strings using the LEDs on a Tiva TM4C129-board.
+That's not an LED blinker, this is an LED blinker.
