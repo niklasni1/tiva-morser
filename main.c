@@ -30,7 +30,8 @@
 
 #include "inc/hw_memmap.h"
 #include "inc/tm4c1294ncpdt.h"
-/*#include "inc/hw_gpio.h"
+/*
+#include "inc/hw_gpio.h"
 #include "inc/hw_ints.h"
 #include "inc/hw_types.h"
 #include "inc/hw_sysctl.h"
@@ -43,30 +44,49 @@
 #include "driverlib/rom_map.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/timer.h"
+#include "driverlib/uart.h"
 
 uint32_t g_ui32SysClock;
 
 struct morser m;
 enum OUTPUT res; 
+bool sending;
 
 void
 Timer0IntHandler(void) { 
   ROM_TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
 
-  res = tick(&m);
-  switch(res) {
-    case HIGH:
-      GPIO_PORTN_DATA_R |= 0x03;
-      break;
-    case LOW:
-      GPIO_PORTN_DATA_R &= ~(0x03);
-      break;
-    case END:
-      GPIO_PORTN_DATA_R &= ~(0x03);
-      init_morser(&m, "emma");
-      break;
+  if (sending) {
+    res = tick(&m);
+    switch(res) {
+      case HIGH:
+        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_0, 1);
+        break;
+      case LOW:
+        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_0, 0);
+        break;
+      case END:
+        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_0, 0);
+        sending = false;
+        UARTCharPutNonBlocking(UART0_BASE, 'h');
+        break;
+    };
   };
 }
+void
+UART0IntHandler(void)
+{   
+  uint32_t ui32Status; 
+
+  // Get the interrrupt status.
+  //
+  ui32Status = ROM_UARTIntStatus(UART0_BASE, true);
+
+  //
+  // Clear the asserted interrupts.
+  //
+  ROM_UARTIntClear(UART0_BASE, ui32Status);
+} 
 
 int
 main(void)
@@ -74,21 +94,8 @@ main(void)
     volatile uint32_t ui32Loop;
     char *str = "emma";
     init_morser(&m, str); 
+    sending = true;
 
-    //
-    // Enable the GPIO port that is used for the on-board LED.
-    //
-    SYSCTL_RCGCGPIO_R = SYSCTL_RCGCGPIO_R12;
-
-    //
-    // Do a dummy read to insert a few cycles after enabling the peripheral.
-    //
-    ui32Loop = SYSCTL_RCGCGPIO_R;
-    
-    // blinking two LEDs is twice as good as blinking one, hence 0x03 -- nn
-    GPIO_PORTN_DIR_R = 0x03;
-    GPIO_PORTN_DEN_R = 0x03;
-    
     //
     // Set the clocking to run directly from the crystal at 120MHz.
     //
@@ -99,9 +106,18 @@ main(void)
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
 
     //
+    // Enable the GPIO port that is used for the on-board LED.
+    //
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+
+    ROM_GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE, GPIO_PIN_0); 
+
+    //
     // Enable processor interrupts.
     //
     ROM_IntMasterEnable();
+
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
 
     ROM_TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC);
     ROM_TimerLoadSet(TIMER0_BASE, TIMER_A, 12000000);
@@ -109,7 +125,23 @@ main(void)
     ROM_TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
     ROM_TimerEnable(TIMER0_BASE, TIMER_A);
 
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+   
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1); 
+    
+    UARTConfigSetExpClk(UART0_BASE, SysCtlClockGet(), 115200,
+        (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
+         UART_CONFIG_PAR_NONE)); 
+
+
+    // set pins
+
     while(1)
     {
+      // non-blocking uart read
+      // if there's a character, do something with it.
     }
 }
